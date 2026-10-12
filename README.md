@@ -5,7 +5,6 @@
 
 基于 [zhongfly/mpv-winbuild](https://github.com/zhongfly/mpv-winbuild) 和 [shinchiro/mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake)，为 Windows 构建带外部音轨 seek 修复的 **GPL x86_64-v3 libmpv**。
 
-本仓库是独立的公开仓库，迁移自 [miaminlk/mpv-winbuild 的已验证提交 `90f9115`](https://github.com/miaminlk/mpv-winbuild/tree/90f9115b7f83e08ba5f7219ad048f40c704b5abf)。保留原有构建逻辑、音轨补丁和依赖兼容性修复，不迁移旧仓库的缓存、工件或 Release。
 
 ## 构建与下载
 
