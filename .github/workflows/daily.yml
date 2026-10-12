@@ -1,0 +1,74 @@
+name: Daily Build
+
+on:
+  schedule:
+    - cron: '17 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: daily-build
+  cancel-in-progress: false
+
+jobs:
+  prune_releases:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Delete releases older than 48 hours
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash prunetags.sh
+
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select bootstrap or daily build
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const repo = context.repo;
+            for (const status of ['queued', 'in_progress', 'waiting'])
+            {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+                ...repo, branch: context.ref.replace('refs/heads/', ''), status, per_page: 100,
+              });
+              const active = runs.find(run => ['llvm.yml', 'toolchain.yml', 'mpv.yml'].some(file => run.path === '.github/workflows/' + file));
+              if (active)
+              {
+                core.notice('Build chain is already active: ' + active.html_url);
+                await core.summary.addRaw('Build already active: ' + active.html_url).write();
+                return;
+              }
+            }
+            const caches = await github.paginate(github.rest.actions.getActionsCacheList, {
+              ...repo, ref: context.ref, sort: 'created_at', direction: 'desc', per_page: 100,
+            });
+            const llvm_cache = caches.find(cache => cache.key.startsWith('llvm-'));
+            const toolchain_cache = caches.find(cache => cache.key.startsWith('toolchain-clang-build64-v3-'));
+            const clang_cache = caches.find(cache => cache.key.startsWith('64-v3-clang_root-'));
+            const rust_cache = caches.find(cache => cache.key.startsWith('rust-'));
+            const llvm_date = llvm_cache && /^llvm-(\d{4}-\d{2}-\d{2})-/.exec(llvm_cache.key);
+            const llvm_age = llvm_date ? Date.now() - Date.parse(llvm_date[1]) : Infinity;
+            let workflow_id = 'mpv.yml';
+            let inputs = {build_target: '64bit-v3', compiler: 'clang', release: 'true', run_name: 'Daily GPL V3 libmpv'};
+            if (llvm_age >= 7 * 24 * 60 * 60 * 1000)
+            {
+              workflow_id = 'llvm.yml';
+              inputs = {build_target: '64bit-v3', trigger_toolchain: 'true', trigger_build: 'true', release: 'true', run_name: 'Bootstrap or weekly LLVM refresh'};
+            }
+            else if (!toolchain_cache || !clang_cache || !rust_cache)
+            {
+              workflow_id = 'toolchain.yml';
+              inputs.trigger_build = 'true';
+              inputs.run_name = 'Restore missing toolchain caches';
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              ...repo, workflow_id, ref: context.ref, inputs,
+            });
+            await core.summary.addRaw('Dispatched ' + workflow_id + ': ' + inputs.run_name).write();

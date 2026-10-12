@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 20:00:00 +0800
+Subject: [PATCH] libiconv: add verified mirrors for unavailable GNU server
+
+Cold builds cannot rely on a cached libiconv tarball when ftp.gnu.org is
+unreachable. Try independent GNU mirrors before the primary server and
+bound download time. Keep the upstream version, hash and build options.
+
+diff --git a/packages/libiconv.cmake b/packages/libiconv.cmake
+--- a/packages/libiconv.cmake
++++ b/packages/libiconv.cmake
+@@ -7,7 +7,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libiconv.pc.in ${CMAKE_CURRENT_BINARY_DIR}
+ 
+ ExternalProject_Add(libiconv
+-    URL https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz
++    URL
++        https://mirrors.kernel.org/gnu/libiconv/libiconv-1.18.tar.gz
++        https://mirrors.ocf.berkeley.edu/gnu/libiconv/libiconv-1.18.tar.gz
++        https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz
+     URL_HASH SHA256=3B08F5F4F9B4EB82F151A7040BFD6FE6C6FB922EFE4B1659C66EA933276965E8
++    TIMEOUT 120
++    INACTIVITY_TIMEOUT 30
+     DOWNLOAD_DIR ${SOURCE_LOCATION}
+     CONFIGURE_COMMAND ${EXEC} CONF=1 <SOURCE_DIR>/configure
+         ${build}

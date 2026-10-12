@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 08:00:00 +0800
+Subject: [PATCH] openssl: detect ASN1_STRING_get_length instead of version
+
+mpv-winbuild-cmake pins an early OpenSSL 4.1 development snapshot without
+this API. Probe its declaration to select curl's existing fallback without
+changing OpenSSL, TLS features, or the length conversion semantics.
+
+The probe only compiles, avoiding static OpenSSL link dependencies, and is
+refreshed on reconfigure so cached detection cannot outlive header updates.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c0d5724..686b57b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -828,6 +828,15 @@ if(CURL_USE_OPENSSL)
+ 
+   cmake_push_check_state()
+   list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
++  # Development snapshots can report 4.1 before this API was introduced.
++  # Check the declaration without linking static OpenSSL dependencies.
++  set(_curl_saved_try_compile_target_type "${CMAKE_TRY_COMPILE_TARGET_TYPE}")
++  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
++  unset(HAVE_ASN1_STRING_GET_LENGTH CACHE)
++  check_symbol_exists("ASN1_STRING_get_length" "openssl/asn1.h"
++    HAVE_ASN1_STRING_GET_LENGTH)
++  set(CMAKE_TRY_COMPILE_TARGET_TYPE "${_curl_saved_try_compile_target_type}")
++  unset(_curl_saved_try_compile_target_type)
+   if(NOT DEFINED HAVE_AWSLC)
+     check_symbol_exists("OPENSSL_IS_AWSLC" "openssl/base.h" HAVE_AWSLC)
+   endif()
+diff --git a/lib/curl_config-cmake.h.in b/lib/curl_config-cmake.h.in
+index 9ba3b42..8e814c0 100644
+--- a/lib/curl_config-cmake.h.in
++++ b/lib/curl_config-cmake.h.in
+@@ -203,6 +203,9 @@
+ /* Define to 1 if you have the `accept4' function. */
+ #cmakedefine HAVE_ACCEPT4 1
+ 
++/* Define to 1 if OpenSSL declares ASN1_STRING_get_length. */
++#cmakedefine HAVE_ASN1_STRING_GET_LENGTH 1
++
+ /* Define to 1 if you have the `fchmod' function. */
+ #cmakedefine HAVE_FCHMOD 1
+ 
+diff --git a/lib/vtls/openssl.c b/lib/vtls/openssl.c
+index 3183d10..4fb444a 100644
+--- a/lib/vtls/openssl.c
++++ b/lib/vtls/openssl.c
+@@ -172,7 +172,7 @@ typedef unsigned long sslerr_t;
+ #endif
+ #define ossl_valsize_t numcert_t
+ 
+-#if OPENSSL_VERSION_NUMBER < 0x40100000L
++#ifndef HAVE_ASN1_STRING_GET_LENGTH
+ static size_t ASN1_STRING_get_length(const ASN1_STRING *str)
+ {
+    const int length = ASN1_STRING_length(str);
+-- 
+2.54.0
