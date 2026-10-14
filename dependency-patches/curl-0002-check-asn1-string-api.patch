@@ -10,8 +10,11 @@ changing OpenSSL, TLS features, or the length conversion semantics.
 The probe only compiles, avoiding static OpenSSL link dependencies, and is
 refreshed on reconfigure so cached detection cannot outlive header updates.
 
+Full blob IDs let git am --3way retrieve historical preimages in partial
+clones when restored sources already contain this patch.
+
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c0d5724..686b57b 100644
+index c0d5724ec407d18f0c77de509da0870269b76712..686b57b83f90269dab3cad61e9d0c26b7fa0a2e4 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -828,6 +828,15 @@ if(CURL_USE_OPENSSL)
@@ -31,7 +34,7 @@ index c0d5724..686b57b 100644
      check_symbol_exists("OPENSSL_IS_AWSLC" "openssl/base.h" HAVE_AWSLC)
    endif()
 diff --git a/lib/curl_config-cmake.h.in b/lib/curl_config-cmake.h.in
-index 9ba3b42..8e814c0 100644
+index 9ba3b42ec409baaa25f2a628f45f8e6a820a2748..8e814c0145c30e24e3281615b36f55a6d022e56d 100644
 --- a/lib/curl_config-cmake.h.in
 +++ b/lib/curl_config-cmake.h.in
 @@ -203,6 +203,9 @@
@@ -45,7 +48,7 @@ index 9ba3b42..8e814c0 100644
  #cmakedefine HAVE_FCHMOD 1
  
 diff --git a/lib/vtls/openssl.c b/lib/vtls/openssl.c
-index 3183d10..4fb444a 100644
+index 3183d10970570c6b939af5ff3e306d6777350dbf..4fb444aa3b6caabf7cc84f91df9cf43d9138fcab 100644
 --- a/lib/vtls/openssl.c
 +++ b/lib/vtls/openssl.c
 @@ -172,7 +172,7 @@ typedef unsigned long sslerr_t;
