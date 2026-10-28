@@ -268,7 +268,7 @@ jobs:
   cache_llvm:
     name: keep llvm cache alive
     needs: [build,params]
-    if: ${{ always() && inputs.compiler =='clang' }}
+    if: ${{ always() && inputs.compiler =='clang' && !inputs.no_save_cache }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/archlinux/archlinux:base-devel

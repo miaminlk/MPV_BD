@@ -101,6 +101,7 @@ jobs:
 
       - name: Merging profdata
         if: ${{ inputs.pgo }}
+        shell: bash
         run: |
           shopt -s globstar
           cd mpv-winbuild-cmake/profiles/

@@ -298,6 +298,7 @@ jobs:
           path: mpv-patch
       - name: Apply mpv pr releated patch
         if: ${{ needs.params.outputs.patch_note }}
+        shell: bash
         run: |
           shopt -s globstar
           cp mpv-patch/*.patch mpv-winbuild-cmake/packages

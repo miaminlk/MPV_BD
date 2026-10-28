@@ -10,14 +10,18 @@ changing OpenSSL, TLS features, or the length conversion semantics.
 The probe only compiles, avoiding static OpenSSL link dependencies, and is
 refreshed on reconfigure so cached detection cannot outlive header updates.
 
+Keep curl's ossl_ASN1_STRING_get_length wrapper and its upstream API alias.
+Only change the feature guard, so both old snapshots and newer OpenSSL
+headers select the correct implementation.
+
 Full blob IDs let git am --3way retrieve historical preimages in partial
 clones when restored sources already contain this patch.
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c0d5724ec407d18f0c77de509da0870269b76712..686b57b83f90269dab3cad61e9d0c26b7fa0a2e4 100644
+index 84be6419953f81196246a8385f02937b79448ed4..47077ccd00744d380895b67a3d360d34833de952 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -828,6 +828,15 @@ if(CURL_USE_OPENSSL)
+@@ -841,6 +841,15 @@ if(CURL_USE_OPENSSL)
  
    cmake_push_check_state()
    list(APPEND CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
@@ -34,7 +38,7 @@ index c0d5724ec407d18f0c77de509da0870269b76712..686b57b83f90269dab3cad61e9d0c26b
      check_symbol_exists("OPENSSL_IS_AWSLC" "openssl/base.h" HAVE_AWSLC)
    endif()
 diff --git a/lib/curl_config-cmake.h.in b/lib/curl_config-cmake.h.in
-index 9ba3b42ec409baaa25f2a628f45f8e6a820a2748..8e814c0145c30e24e3281615b36f55a6d022e56d 100644
+index 70562862293d9ad2229be7b8358471c404dfda40..5df98d37385148c67777e424e77adeb5524cb8d2 100644
 --- a/lib/curl_config-cmake.h.in
 +++ b/lib/curl_config-cmake.h.in
 @@ -203,6 +203,9 @@
@@ -48,17 +52,17 @@ index 9ba3b42ec409baaa25f2a628f45f8e6a820a2748..8e814c0145c30e24e3281615b36f55a6
  #cmakedefine HAVE_FCHMOD 1
  
 diff --git a/lib/vtls/openssl.c b/lib/vtls/openssl.c
-index 3183d10970570c6b939af5ff3e306d6777350dbf..4fb444aa3b6caabf7cc84f91df9cf43d9138fcab 100644
+index a86e8726acbe693a3b388d65e8ce9c2c8550689c..4dea7d1e240e60ab6fa7588e8030cf1b85735caf 100644
 --- a/lib/vtls/openssl.c
 +++ b/lib/vtls/openssl.c
-@@ -172,7 +172,7 @@ typedef unsigned long sslerr_t;
+@@ -169,7 +169,7 @@ typedef unsigned long sslerr_t;
  #endif
  #define ossl_valsize_t numcert_t
  
--#if OPENSSL_VERSION_NUMBER < 0x40100000L
-+#ifndef HAVE_ASN1_STRING_GET_LENGTH
- static size_t ASN1_STRING_get_length(const ASN1_STRING *str)
- {
-    const int length = ASN1_STRING_length(str);
+-#if OPENSSL_VERSION_NUMBER >= 0x40100000L
++#ifdef HAVE_ASN1_STRING_GET_LENGTH
+ #define ossl_ASN1_STRING_get_length ASN1_STRING_get_length
+ #else
+ static size_t ossl_ASN1_STRING_get_length(const ASN1_STRING *str)
 -- 
 2.54.0
