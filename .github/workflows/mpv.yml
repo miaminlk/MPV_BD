@@ -363,14 +363,8 @@ jobs:
         run: |
           chmod +x build.sh
           cd mpv-winbuild-cmake
-          for patch in ../patch/*.patch; do
-            [[ -f "$patch" ]] || continue
-            if git apply --reverse --check "$patch" 2>/dev/null; then
-              echo "Already applied: $patch"
-            else
-              git am --3way "$patch" || { git am --abort; exit 1; }
-            fi
-          done
+          python ../dependency-patches/apply_dependency_patches.py '../patch/*.patch'
+          python ../dependency-patches/install_dependency_patch_command.py
           python ../mpv-patches/install_mpv_patch_command.py
           cp ../dependency-patches/curl-*.patch packages/
           if grep -Eq -- '-Dgpl=false|--disable-gpl' packages/mpv.cmake packages/ffmpeg.cmake; then
