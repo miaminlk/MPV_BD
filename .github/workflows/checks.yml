@@ -1,0 +1,26 @@
+name: Build script checks
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'action/**'
+      - 'dependency-patches/**'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'action/**'
+      - 'dependency-patches/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test patch application and curl feature detection
+        run: python -m unittest discover -s tests -v
