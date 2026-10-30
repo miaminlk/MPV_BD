@@ -25,7 +25,24 @@ for patch_path in patch_paths:
 		print(f"Already applied: {patch_path.name}", flush=True)
 		continue
 	print(f"Applying: {patch_path.name}", flush=True)
-	result = subprocess.run(["git", "am", "--3way", str(patch_path)])
+	command = ["git", "am", "--3way", str(patch_path)]
+	result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+	print(result.stdout, end="", flush=True)
+	if result.returncode and "could not build fake ancestor" in result.stdout:
+		# Abbreviated blob IDs cannot be fetched lazily from a partial clone.
+		# Fetch history only when Git actually needs a missing patch preimage.
+		subprocess.run(["git", "am", "--abort"], check=True)
+		shallow = subprocess.run(
+			["git", "rev-parse", "--is-shallow-repository"],
+			check=True, capture_output=True, text=True,
+		).stdout.strip() == "true"
+		print("Fetching missing patch history for the three-way merge.", flush=True)
+		subprocess.run(
+			["git", "fetch", "--unshallow" if shallow else "--refetch", "--no-filter", "origin"],
+			check=True,
+		)
+		result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+		print(result.stdout, end="", flush=True)
 	if result.returncode:
 		# Leave the checkout usable for the next run; never hide a real conflict.
 		subprocess.run(["git", "am", "--abort"], check=True)

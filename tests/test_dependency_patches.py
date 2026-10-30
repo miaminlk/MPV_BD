@@ -1,6 +1,7 @@
 """Exercise real Git repositories, including restored and conflicting sources."""
 
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -113,6 +114,34 @@ class dependency_patch_tests(unittest.TestCase):
 		result = self.run_patcher(patch_path)
 		self.assertEqual(result.returncode, 0, result.stderr)
 		self.assertEqual((self.source / "first.txt").read_text(), "ONE\ntwo\nthree\nFOUR\nfive\nsix\nseven\neight\n")
+
+	def test_missing_abbreviated_preimage_is_fetched_for_three_way_merge(self):
+		(self.source / "first.txt").write_text("one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\n", newline="\n")
+		self.git("commit", "-am", "context")
+		base = self.git("rev-parse", "HEAD").stdout.strip()
+		patch_path = self.make_patch("0001.patch", {"first.txt": "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\n"})
+		patch_path.write_text(
+			re.sub(r"(?m)^index ([0-9a-f]{40})\.\.([0-9a-f]{40})", lambda match: f"index {match[1][:7]}..{match[2][:7]}", patch_path.read_text()),
+			newline="\n",
+		)
+		self.git("reset", "--hard", base)
+		(self.source / "first.txt").write_text("one\ntwo\nthree\nFOUR\nfive\nsix\nseven\neight\n", newline="\n")
+		self.git("commit", "-am", "upstream context change")
+		self.git("config", "uploadpack.allowFilter", "true")
+		original_source = self.source
+		for clone_type, clone_option in (("shallow", "--depth=1"), ("partial", "--filter=blob:none")):
+			with self.subTest(clone_type=clone_type):
+				self.source = original_source
+				cached_source = self.root / clone_type
+				self.git("-c", "core.autocrlf=false", "clone", clone_option, original_source.as_uri(), str(cached_source))
+				self.source = cached_source
+				self.git("config", "user.name", "Patch tests")
+				self.git("config", "user.email", "patch-tests@example.invalid")
+				self.git("config", "core.autocrlf", "false")
+				result = self.run_patcher(patch_path)
+				self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+				self.assertEqual(self.git("rev-parse", "--is-shallow-repository").stdout.strip(), "false")
+				self.assertEqual((self.source / "first.txt").read_text(), "ONE\ntwo\nthree\nFOUR\nfive\nsix\nseven\neight\n")
 
 	def test_installer_updates_recipes_and_can_run_twice(self):
 		packages = self.source / "packages"
