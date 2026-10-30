@@ -15,6 +15,16 @@ for pattern in sys.argv[1:]:
 if not patch_paths:
 	raise RuntimeError("Pass patch files or a patch glob.")
 
+# These are build-owned checkouts. Cached patch commits must be replayed from
+# their upstream base: later upstream edits can invalidate a reverse hunk check.
+upstream = subprocess.run(["git", "rev-parse", "--verify", "@{upstream}"], capture_output=True, text=True)
+if upstream.returncode == 0:
+	base = subprocess.run(
+		["git", "merge-base", "HEAD", upstream.stdout.strip()],
+		check=True, capture_output=True, text=True,
+	).stdout.strip()
+	subprocess.run(["git", "reset", "--hard", base], check=True)
+
 for patch_path in patch_paths:
 	# Context whitespace may differ after Git normalizes a cached checkout.
 	already_applied = subprocess.run(

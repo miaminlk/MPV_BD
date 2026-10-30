@@ -142,6 +142,9 @@ class dependency_patch_tests(unittest.TestCase):
 				self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 				self.assertEqual(self.git("rev-parse", "--is-shallow-repository").stdout.strip(), "false")
 				self.assertEqual((self.source / "first.txt").read_text(), "ONE\ntwo\nthree\nFOUR\nfive\nsix\nseven\neight\n")
+				result = self.run_patcher(patch_path)
+				self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+				self.assertEqual((self.source / "first.txt").read_text(), "ONE\ntwo\nthree\nFOUR\nfive\nsix\nseven\neight\n")
 
 	def test_installer_updates_recipes_and_can_run_twice(self):
 		packages = self.source / "packages"
