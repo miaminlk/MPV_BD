@@ -8,7 +8,7 @@ script_dir = Path(__file__).resolve().parent
 packages_dir = Path.cwd() / "packages"
 source_patcher = script_dir / "apply_dependency_patches.py"
 old_command = "PATCH_COMMAND ${EXEC} git am --3way "
-new_command = "PATCH_COMMAND ${EXEC} python ${CMAKE_CURRENT_SOURCE_DIR}/apply_dependency_patches.py "
+new_command = "PATCH_COMMAND ${EXEC} python ${CMAKE_CURRENT_SOURCE_DIR}/apply_dependency_patches.py --replay "
 
 for cmake_path in packages_dir.glob("*.cmake"):
 	text = cmake_path.read_text(encoding="utf-8")

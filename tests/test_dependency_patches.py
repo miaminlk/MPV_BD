@@ -44,9 +44,9 @@ class dependency_patch_tests(unittest.TestCase):
 		patch_path.write_text(self.git("format-patch", "-1", "--stdout", "--full-index").stdout, newline="\n")
 		return patch_path
 
-	def run_patcher(self, *patch_paths):
+	def run_patcher(self, *patch_paths, replay=True):
 		return subprocess.run(
-			[sys.executable, str(patcher), *(str(path) for path in patch_paths)],
+			[sys.executable, str(patcher), *(["--replay"] if replay else []), *(str(path) for path in patch_paths)],
 			cwd=self.source, capture_output=True, text=True,
 		)
 
@@ -61,6 +61,22 @@ class dependency_patch_tests(unittest.TestCase):
 		self.assertEqual(result.returncode, 0, result.stderr)
 		self.assertEqual(result.stdout.count("Already applied:"), 2)
 		self.assertEqual(self.git("rev-parse", "HEAD").stdout, head)
+		self.assertEqual((self.source / "second.txt").read_text(), "after\n")
+
+	def test_build_recipe_patches_preserve_existing_pr_commits(self):
+		branch = self.git("branch", "--show-current").stdout.strip()
+		self.git("remote", "add", "origin", self.source.as_uri())
+		self.git("update-ref", f"refs/remotes/origin/{branch}", self.base)
+		self.git("config", f"branch.{branch}.remote", "origin")
+		self.git("config", f"branch.{branch}.merge", f"refs/heads/{branch}")
+		(self.source / "first.txt").write_text("custom PR change\n", newline="\n")
+		self.git("commit", "-am", "custom PR")
+		pr_head = self.git("rev-parse", "HEAD").stdout.strip()
+		patch_path = self.make_patch("0001.patch", {"second.txt": "after\n"})
+		self.git("reset", "--hard", pr_head)
+		result = self.run_patcher(patch_path, replay=False)
+		self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+		self.assertEqual((self.source / "first.txt").read_text(), "custom PR change\n")
 		self.assertEqual((self.source / "second.txt").read_text(), "after\n")
 
 	def test_cached_shallow_source_without_patch_ancestor(self):
