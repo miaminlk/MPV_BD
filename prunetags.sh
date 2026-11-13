@@ -7,13 +7,19 @@
 
 set -euo pipefail
 
-cutoff=$(date -u -d '48 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-# Enumerate all pages before deleting so pagination cannot skip releases.
-release_ids=$(gh api --paginate 'repos/{owner}/{repo}/releases' \
-	--jq ".[] | select(.draft == false and .published_at != null and .published_at < \"$cutoff\") | .id")
+# Collect all pages before keeping the three most recently published releases.
+release_ids=$(gh api --paginate 'repos/{owner}/{repo}/releases' | \
+	jq --slurp '
+		add
+		| map(select(.draft == false and .published_at != null))
+		| sort_by(.published_at)
+		| reverse
+		| .[3:][]
+		| .id
+	')
 
 while IFS= read -r release_id; do
 	[[ -n "$release_id" ]] || continue
-	echo "Deleting release $release_id published before $cutoff"
+	echo "Deleting release $release_id outside the latest 3 releases"
 	gh api --method DELETE "repos/{owner}/{repo}/releases/$release_id"
 done <<< "$release_ids"
