@@ -364,6 +364,7 @@ jobs:
           chmod +x build.sh
           cd mpv-winbuild-cmake
           python ../dependency-patches/apply_dependency_patches.py '../patch/*.patch'
+          python ../dependency-patches/add_libiconv_mirrors.py
           python ../dependency-patches/install_dependency_patch_command.py
           python ../mpv-patches/install_mpv_patch_command.py
           cp ../dependency-patches/curl-*.patch packages/
@@ -616,7 +617,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - name: Delete releases older than 48 hours
+      - name: Keep the latest 3 releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash prunetags.sh

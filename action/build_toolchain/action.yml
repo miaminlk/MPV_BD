@@ -26,6 +26,7 @@ runs:
         set -x
         cd mpv-winbuild-cmake
         python ../dependency-patches/apply_dependency_patches.py '../patch/*.patch'
+        python ../dependency-patches/add_libiconv_mirrors.py
         cp ../dependency-patches/curl-*.patch packages/
         python ../dependency-patches/install_dependency_patch_command.py
 
