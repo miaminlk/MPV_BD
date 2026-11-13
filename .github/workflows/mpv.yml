@@ -364,6 +364,7 @@ jobs:
           chmod +x build.sh
           cd mpv-winbuild-cmake
           python ../dependency-patches/apply_dependency_patches.py '../patch/*.patch'
+          python ../dependency-patches/add_libiconv_mirrors.py
           python ../dependency-patches/install_dependency_patch_command.py
           python ../mpv-patches/install_mpv_patch_command.py
           cp ../dependency-patches/curl-*.patch packages/
